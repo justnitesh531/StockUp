@@ -18,6 +18,29 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+st.markdown("""
+<style>
+/* FORCE OVERRIDE the yellow cafe box in sidebar */
+section[data-testid="stSidebar"] div {
+    background-color: transparent !important;
+}
+
+/* Re-style the cafe info box text */
+section[data-testid="stSidebar"] strong,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] p {
+    color: #EAEAEA !important;
+}
+
+/* Add subtle card styling back */
+section[data-testid="stSidebar"] > div:first-child div {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Custom CSS - Mobile Friendly
 st.markdown("""
