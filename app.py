@@ -20,31 +20,11 @@ st.set_page_config(
 )
 st.markdown("""
 <style>
-/* Target ONLY the first markdown block after the sidebar title */
-section[data-testid="stSidebar"] .stMarkdown {
-    margin-bottom: 0.5rem;
-}
-
-/* Cafe info card (second markdown block in sidebar) */
-section[data-testid="stSidebar"] .stMarkdown:nth-of-type(2) > div {
-    background: rgba(255, 255, 255, 0.04) !important;
-    color: #EAEAEA !important;
-    padding: 10px 12px;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    border: 1px solid rgba(255,255,255,0.08);
-}
-
-/* Cafe name */
-section[data-testid="stSidebar"] .stMarkdown:nth-of-type(2) strong {
-    color: #FFFFFF !important;
-}
-
-/* Cafe ID */
-section[data-testid="stSidebar"] .stMarkdown:nth-of-type(2) span,
-section[data-testid="stSidebar"] .stMarkdown:nth-of-type(2) p {
-    opacity: 0.7;
-    font-size: 0.75rem;
+/* Make text inside the yellow cafe box readable */
+section[data-testid="stSidebar"] .stMarkdown strong,
+section[data-testid="stSidebar"] .stMarkdown span,
+section[data-testid="stSidebar"] .stMarkdown p {
+    color: #1A1A1A !important;  /* dark text for yellow background */
 }
 </style>
 """, unsafe_allow_html=True)
