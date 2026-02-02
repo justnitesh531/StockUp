@@ -13,7 +13,7 @@ import secrets
 
 # Page config
 st.set_page_config(
-    page_title="OrderFlow",
+    page_title="StockUp",
     page_icon="🛒",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -630,7 +630,7 @@ cafe_manager = CafeManager()
 def login_screen():
     st.markdown("""
     <div class='welcome-banner'>
-        <h1 style='color: white; margin: 0;'>🛒 OrderFlow</h1>
+        <h1 style='color: white; margin: 0;'>🛒 StockUp</h1>
         <p style='color: white; margin: 0;'>Multi-Tenant Café Ordering System</p>
     </div>
     """, unsafe_allow_html=True)
@@ -1447,7 +1447,7 @@ def main():
     
     # Sidebar
     with st.sidebar:
-        st.title("🛒 OrderFlow")
+        st.title("🛒 StockUp")
         
         # Show café info
         st.markdown(f"""
