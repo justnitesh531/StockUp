@@ -11,14 +11,6 @@ from datetime import datetime
 import urllib.parse
 import secrets
 
-# Restore session from URL params (on refresh)
-params = st.query_params
-
-if "cafe_id" in params and "user" in params:
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = True
-        st.session_state.cafe_id = params["cafe_id"]
-        st.session_state.user_phone = params["user"]
 
 # Page config
 st.set_page_config(
@@ -684,10 +676,6 @@ def login_screen():
                         st.session_state.user_role = user['role']
                         st.session_state.user_phone = phone
                         
-                        st.query_params.update({
-                            "cafe_id": cafe_id.upper(),
-                            "user": phone
-                        })
                         st.success(f"✅ Welcome back, {user['name']}!")
                         st.balloons()
                         st.rerun()
@@ -1525,8 +1513,8 @@ def main():
         st.caption(f"Role: {st.session_state.user_role}")
         
         if st.button("🚪 Logout", use_container_width=True):
-            st.session_state.clear()
-            st.query_params.clear()
+            st.session_state.logged_in = False
+            st.session_state.current_page = "home"
             st.rerun()
     
     # Route to screens
