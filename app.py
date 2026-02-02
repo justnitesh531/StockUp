@@ -299,16 +299,17 @@ st.markdown("""
 # FIREBASE SETUP
 # ============================================
 
+import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, firestore
+
 @st.cache_resource
 def init_firebase():
-    try:
-        firebase_admin.get_app()
-    except ValueError:
-        cred = credentials.Certificate('firebase-key.json')
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(dict(st.secrets["firebase"]))
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
-db = init_firebase()
 
 # ============================================
 # CATEGORIZATION ENGINE
