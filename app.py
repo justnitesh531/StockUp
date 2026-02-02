@@ -20,24 +20,31 @@ st.set_page_config(
 )
 st.markdown("""
 <style>
-/* FORCE OVERRIDE the yellow cafe box in sidebar */
-section[data-testid="stSidebar"] div {
-    background-color: transparent !important;
+/* Target ONLY the first markdown block after the sidebar title */
+section[data-testid="stSidebar"] .stMarkdown {
+    margin-bottom: 0.5rem;
 }
 
-/* Re-style the cafe info box text */
-section[data-testid="stSidebar"] strong,
-section[data-testid="stSidebar"] span,
-section[data-testid="stSidebar"] p {
-    color: #EAEAEA !important;
-}
-
-/* Add subtle card styling back */
-section[data-testid="stSidebar"] > div:first-child div {
+/* Cafe info card (second markdown block in sidebar) */
+section[data-testid="stSidebar"] .stMarkdown:nth-of-type(2) > div {
     background: rgba(255, 255, 255, 0.04) !important;
-    border-radius: 10px;
+    color: #EAEAEA !important;
     padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
     border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Cafe name */
+section[data-testid="stSidebar"] .stMarkdown:nth-of-type(2) strong {
+    color: #FFFFFF !important;
+}
+
+/* Cafe ID */
+section[data-testid="stSidebar"] .stMarkdown:nth-of-type(2) span,
+section[data-testid="stSidebar"] .stMarkdown:nth-of-type(2) p {
+    opacity: 0.7;
+    font-size: 0.75rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -322,20 +329,17 @@ st.markdown("""
 # FIREBASE SETUP
 # ============================================
 
-import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, firestore
-
 @st.cache_resource
 def init_firebase():
-    if not firebase_admin._apps:
+    try:
+        firebase_admin.get_app()
+    except ValueError:
         cred = credentials.Certificate(dict(st.secrets["firebase"]))
+
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
 db = init_firebase()
-
-
 
 # ============================================
 # CATEGORIZATION ENGINE
