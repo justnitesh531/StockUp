@@ -20,10 +20,12 @@ st.set_page_config(
 )
 st.markdown("""
 <style>
-/* Make text inside the yellow cafe box readable */
+/* Make ALL text inside the yellow cafe box readable */
 section[data-testid="stSidebar"] .stMarkdown strong,
 section[data-testid="stSidebar"] .stMarkdown span,
-section[data-testid="stSidebar"] .stMarkdown p {
+section[data-testid="stSidebar"] .stMarkdown p,
+section[data-testid="stSidebar"] .stMarkdown code,
+section[data-testid="stSidebar"] .stMarkdown small {
     color: #1A1A1A !important;  /* dark text for yellow background */
 }
 </style>
