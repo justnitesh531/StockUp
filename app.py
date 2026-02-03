@@ -381,11 +381,15 @@ def categorize_item(item_name):
 class CafeManager:
     def __init__(self):
         self.cafes_ref = db.collection('cafes')
+        self.users_ref = db.collection('users')
     
-    def create_cafe(self, cafe_name, owner_name, phone):
-        """Create new cafe with unique ID."""
-        # Generate unique 8-character cafe ID
+    def create_cafe(self, cafe_name, owner_name, phone, password):
+        """Create new cafe with phone + password."""
         cafe_id = secrets.token_hex(4).upper()
+        
+        existing = self.get_user_by_phone(phone)
+        if existing:
+            return None, "Phone number already registered"
         
         cafe_data = {
             'name': cafe_name,
@@ -397,15 +401,17 @@ class CafeManager:
         
         self.cafes_ref.document(cafe_id).set(cafe_data)
         
-        # Create owner as first user
-        self.cafes_ref.document(cafe_id).collection('users').add({
+        self.users_ref.add({
             'name': owner_name,
             'phone': phone,
+            'password': password,
             'role': 'Owner',
+            'cafe_id': cafe_id,
+            'cafe_name': cafe_name,
             'created_at': firestore.SERVER_TIMESTAMP
         })
         
-        return cafe_id
+        return cafe_id, "Success"
     
     def get_cafe(self, cafe_id):
         """Get cafe details."""
@@ -414,9 +420,9 @@ class CafeManager:
             return doc.to_dict()
         return None
     
-    def get_user_by_phone(self, cafe_id, phone):
-        """Find user in cafe by phone."""
-        docs = self.cafes_ref.document(cafe_id).collection('users').where('phone', '==', phone).limit(1).stream()
+    def get_user_by_phone(self, phone):
+        """Find user by phone number."""
+        docs = self.users_ref.where('phone', '==', phone).limit(1).stream()
         
         for doc in docs:
             user = doc.to_dict()
@@ -424,14 +430,46 @@ class CafeManager:
             return user
         return None
     
-    def add_staff(self, cafe_id, name, phone):
+    def verify_login(self, phone, password):
+        """Verify phone + password login."""
+        user = self.get_user_by_phone(phone)
+        
+        if user and user.get('password') == password:
+            return user
+        return None
+    
+    def add_staff(self, cafe_id, cafe_name, name, phone, password):
         """Add staff member to cafe."""
-        self.cafes_ref.document(cafe_id).collection('users').add({
+        existing = self.get_user_by_phone(phone)
+        if existing:
+            return False, "Phone number already registered"
+        
+        self.users_ref.add({
             'name': name,
             'phone': phone,
+            'password': password,
             'role': 'Staff',
+            'cafe_id': cafe_id,
+            'cafe_name': cafe_name,
             'created_at': firestore.SERVER_TIMESTAMP
         })
+        
+        return True, "Success"
+    
+    def get_all_staff(self, cafe_id):
+        """Get all users in a cafe."""
+        docs = self.users_ref.where('cafe_id', '==', cafe_id).stream()
+        users = []
+        for doc in docs:
+            user = doc.to_dict()
+            user['id'] = doc.id
+            users.append(user)
+        return users
+    
+    def delete_staff(self, user_id):
+        """Delete a staff member."""
+        self.users_ref.document(user_id).delete()
+        return True
 
 # ============================================
 # VENDOR MANAGER (MULTI-TENANT)
@@ -631,57 +669,49 @@ cafe_manager = CafeManager()
 def login_screen():
     st.markdown("""
     <div class='welcome-banner'>
-        <h1 style='color: white; margin: 0;'>🛒 StockUp</h1>
-        <p style='color: white; margin: 0;'>Multi-Tenant Café Ordering System</p>
+        <h1 style='color: white; margin: 0;'>🛒 OrderFlow</h1>
+        <p style='color: white; margin: 0;'>Smart Inventory Management</p>
     </div>
     """, unsafe_allow_html=True)
     
     tab1, tab2 = st.tabs(["🔑 Login", "✨ Create New Café"])
     
     # ============================================
-    # TAB 1: LOGIN (EXISTING USERS)
+    # TAB 1: LOGIN - PHONE + PASSWORD
     # ============================================
     with tab1:
-        st.subheader("Login to Your Café")
+        st.subheader("Login to Your Account")
         
         with st.form("login_form"):
-            cafe_id = st.text_input("Café ID", placeholder="ABC12345", max_chars=8)
             phone = st.text_input("Phone Number", placeholder="1234567890", max_chars=10)
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
             
             submitted = st.form_submit_button("Login", use_container_width=True, type="primary")
         
         if submitted:
-            if not cafe_id or not phone:
+            if not phone or not password:
                 st.error("❌ Please fill all fields")
             elif len(phone) != 10 or not phone.isdigit():
                 st.error("❌ Phone must be 10 digits")
             else:
-                # Check if café exists
-                cafe = cafe_manager.get_cafe(cafe_id.upper())
+                user = cafe_manager.verify_login(phone, password)
                 
-                if not cafe:
-                    st.error("❌ Café ID not found")
+                if not user:
+                    st.error("❌ Invalid phone number or password")
                 else:
-                    # Check if user exists in this café
-                    user = cafe_manager.get_user_by_phone(cafe_id.upper(), phone)
+                    st.session_state.logged_in = True
+                    st.session_state.cafe_id = user['cafe_id']
+                    st.session_state.cafe_name = user['cafe_name']
+                    st.session_state.user_name = user['name']
+                    st.session_state.user_role = user['role']
+                    st.session_state.user_phone = phone
                     
-                    if not user:
-                        st.error("❌ Phone number not registered in this café")
-                    else:
-                        # Login successful!
-                        st.session_state.logged_in = True
-                        st.session_state.cafe_id = cafe_id.upper()
-                        st.session_state.cafe_name = cafe['name']
-                        st.session_state.user_name = user['name']
-                        st.session_state.user_role = user['role']
-                        st.session_state.user_phone = phone
-                        
-                        st.success(f"✅ Welcome back, {user['name']}!")
-                        st.balloons()
-                        st.rerun()
+                    st.success(f"✅ Welcome back, {user['name']}!")
+                    st.balloons()
+                    st.rerun()
     
     # ============================================
-    # TAB 2: CREATE NEW CAFÉ
+    # TAB 2: CREATE NEW CAFÉ - PHONE + PASSWORD
     # ============================================
     with tab2:
         st.subheader("Create Your Café Account")
@@ -690,43 +720,41 @@ def login_screen():
             cafe_name = st.text_input("Café Name", placeholder="My Coffee Shop")
             owner_name = st.text_input("Owner Name", placeholder="Your Name")
             owner_phone = st.text_input("Phone Number", placeholder="1234567890", max_chars=10)
+            password = st.text_input("Create Password", type="password", placeholder="Choose a password")
+            confirm_password = st.text_input("Confirm Password", type="password", placeholder="Re-enter password")
             
             submitted = st.form_submit_button("Create Café", use_container_width=True, type="primary")
         
         if submitted:
-            if not cafe_name or not owner_name or not owner_phone:
+            if not cafe_name or not owner_name or not owner_phone or not password:
                 st.error("❌ Please fill all fields")
             elif len(owner_phone) != 10 or not owner_phone.isdigit():
                 st.error("❌ Phone must be 10 digits")
+            elif password != confirm_password:
+                st.error("❌ Passwords don't match")
+            elif len(password) < 4:
+                st.error("❌ Password must be at least 4 characters")
             else:
-                # Create new café
-                cafe_id = cafe_manager.create_cafe(cafe_name, owner_name, owner_phone)
+                cafe_id, message = cafe_manager.create_cafe(cafe_name, owner_name, owner_phone, password)
                 
-                # Show success with Café ID
-                st.success("🎉 Café created successfully!")
-                
-                st.markdown(f"""
-                <div class="cafe-id-box">
-                    <h3>⚠️ IMPORTANT - Save Your Café ID!</h3>
-                    <h1 style="color: #ff6b6b; font-size: 48px;">{cafe_id}</h1>
-                    <p><strong>Write this down!</strong> You'll need it to login.</p>
-                    <p>Share this ID with your staff members so they can join.</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Auto-login the owner
-                st.session_state.logged_in = True
-                st.session_state.cafe_id = cafe_id
-                st.session_state.cafe_name = cafe_name
-                st.session_state.user_name = owner_name
-                st.session_state.user_role = "Owner"
-                st.session_state.user_phone = owner_phone
-                
-                st.info("✅ You're now logged in! Refreshing...")
-                st.rerun()
+                if cafe_id:
+                    st.success("🎉 Café created successfully!")
+                    st.info(f"✅ You can now login with phone: **{owner_phone}** and your password")
+                    
+                    st.session_state.logged_in = True
+                    st.session_state.cafe_id = cafe_id
+                    st.session_state.cafe_name = cafe_name
+                    st.session_state.user_name = owner_name
+                    st.session_state.user_role = "Owner"
+                    st.session_state.user_phone = owner_phone
+                    
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error(f"❌ {message}")
         
         st.markdown("---")
-        st.info("💡 **Tip:** After creating your café, you can add staff members from the Staff menu inside the app.")
+        st.info("💡 **Tip:** After creating your café, you can add staff members from the Staff menu.")
 
 # ============================================
 # HOME SCREEN
@@ -1298,35 +1326,36 @@ def staff_screen():
         with col2:
             staff_phone = st.text_input("Staff Phone (10 digits)", max_chars=10)
         
+        staff_password = st.text_input("Staff Password", type="password", placeholder="Create password for staff")
+        
         if st.form_submit_button("Add Staff", use_container_width=True):
-            if not staff_name or not staff_phone:
+            if not staff_name or not staff_phone or not staff_password:
                 st.error("❌ Please fill all fields")
             elif len(staff_phone) != 10 or not staff_phone.isdigit():
                 st.error("❌ Phone must be 10 digits")
+            elif len(staff_password) < 4:
+                st.error("❌ Password must be at least 4 characters")
             else:
-                # Check if user already exists
-                existing = cafe_manager.get_user_by_phone(st.session_state.cafe_id, staff_phone)
-                if existing:
-                    st.error(f"❌ Phone number already registered")
-                else:
-                    cafe_manager.add_staff(st.session_state.cafe_id, staff_name, staff_phone)
+                success, message = cafe_manager.add_staff(
+                    st.session_state.cafe_id,
+                    st.session_state.cafe_name,
+                    staff_name,
+                    staff_phone,
+                    staff_password
+                )
+                if success:
                     st.success(f"✅ Added {staff_name} as staff member")
-                    st.info(f"📱 Share Café ID with them: **{st.session_state.cafe_id}**")
+                    st.info(f"📱 They can login with phone **{staff_phone}** and the password you set")
                     st.rerun()
+                else:
+                    st.error(f"❌ {message}")
     
     st.markdown("---")
     
     st.subheader("📋 All Users")
     
     # Get all users
-    users_ref = db.collection('cafes').document(st.session_state.cafe_id).collection('users')
-    docs = users_ref.stream()
-    
-    users = []
-    for doc in docs:
-        user = doc.to_dict()
-        user['id'] = doc.id
-        users.append(user)
+    users = cafe_manager.get_all_staff(st.session_state.cafe_id)
     
     if len(users) == 0:
         st.info("No users found.")
@@ -1345,7 +1374,7 @@ def staff_screen():
             with col3:
                 if user['role'] != 'Owner':
                     if st.button("🗑️", key=f"del_user_{user['id']}"):
-                        users_ref.document(user['id']).delete()
+                        cafe_manager.delete_staff(user['id'])
                         st.success(f"Removed {user['name']}")
                         st.rerun()
             
