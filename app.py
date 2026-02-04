@@ -438,6 +438,20 @@ class CafeManager:
             return user
         return None
     
+    def reset_password(self, phone, new_password):
+        """Reset password for a user."""
+        user = self.get_user_by_phone(phone)
+        
+        if not user:
+            return False, "Phone number not found"
+        
+        # Update password
+        self.users_ref.document(user['id']).update({
+            'password': new_password
+        })
+        
+        return True, f"Password reset successful for {user['name']}"
+    
     def add_staff(self, cafe_id, cafe_name, name, phone, password):
         """Add staff member to cafe."""
         existing = self.get_user_by_phone(phone)
@@ -674,7 +688,7 @@ def login_screen():
     </div>
     """, unsafe_allow_html=True)
     
-    tab1, tab2 = st.tabs(["🔑 Login", "✨ Create New Café"])
+    tab1, tab2, tab3 = st.tabs(["🔑 Login", "✨ Create New Café", "🔓 Forgot Password"])
     
     # ============================================
     # TAB 1: LOGIN - PHONE + PASSWORD
@@ -755,6 +769,42 @@ def login_screen():
         
         st.markdown("---")
         st.info("💡 **Tip:** After creating your café, you can add staff members from the Staff menu.")
+    
+    # ============================================
+    # TAB 3: FORGOT PASSWORD
+    # ============================================
+    with tab3:
+        st.subheader("Reset Your Password")
+        st.caption("Enter your phone number to reset your password")
+        
+        with st.form("forgot_password_form"):
+            reset_phone = st.text_input("Phone Number", placeholder="1234567890", max_chars=10, key="reset_phone")
+            new_password = st.text_input("New Password", type="password", placeholder="Enter new password", key="new_pass")
+            confirm_new_password = st.text_input("Confirm New Password", type="password", placeholder="Re-enter new password", key="confirm_new_pass")
+            
+            submitted = st.form_submit_button("Reset Password", use_container_width=True, type="primary")
+        
+        if submitted:
+            if not reset_phone or not new_password or not confirm_new_password:
+                st.error("❌ Please fill all fields")
+            elif len(reset_phone) != 10 or not reset_phone.isdigit():
+                st.error("❌ Phone must be 10 digits")
+            elif new_password != confirm_new_password:
+                st.error("❌ Passwords don't match")
+            elif len(new_password) < 4:
+                st.error("❌ Password must be at least 4 characters")
+            else:
+                success, message = cafe_manager.reset_password(reset_phone, new_password)
+                
+                if success:
+                    st.success("✅ " + message)
+                    st.info("🔑 You can now login with your new password!")
+                    st.balloons()
+                else:
+                    st.error(f"❌ {message}")
+        
+        st.markdown("---")
+        st.info("💡 **Note:** You can reset your password anytime using your registered phone number.")
 
 # ============================================
 # HOME SCREEN
