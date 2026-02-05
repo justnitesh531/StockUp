@@ -33,6 +33,8 @@ if 'cafe_name' not in st.session_state:
     st.session_state.cafe_name = ""
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "home"
+if 'items_added_count' not in st.session_state:
+    st.session_state.items_added_count = 0
 st.markdown("""
 <style>
 /* Make ALL text inside the yellow cafe box readable */
@@ -935,6 +937,12 @@ def add_items_screen():
             st.rerun()
         return
     
+    # Show success message if items were just added
+    if 'items_added_count' in st.session_state and st.session_state.items_added_count > 0:
+        st.success(f"✅ Successfully added {st.session_state.items_added_count} items to draft!")
+        st.balloons()
+        st.session_state.items_added_count = 0  # Reset
+    
     # BULK ADD MODE
     st.subheader("📝 Bulk Add Items")
     st.caption("Enter items one per line in format: Item Name, Quantity")
@@ -976,8 +984,7 @@ def add_items_screen():
                         added_count += 1
                 
                 if added_count > 0:
-                    st.success(f"✅ Added {added_count} items to draft!")
-                    st.balloons()
+                    st.session_state.items_added_count = added_count
                     st.rerun()
                 else:
                     st.error("❌ No valid items found")
