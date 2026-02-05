@@ -19,6 +19,20 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Session state persistence - prevent logout on refresh
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = ""
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = ""
+if 'cafe_id' not in st.session_state:
+    st.session_state.cafe_id = ""
+if 'cafe_name' not in st.session_state:
+    st.session_state.cafe_name = ""
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "home"
 st.markdown("""
 <style>
 /* Make ALL text inside the yellow cafe box readable */
@@ -667,13 +681,6 @@ def create_whatsapp_url(phone, message):
 # SESSION STATE
 # ============================================
 
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.user_name = ""
-    st.session_state.user_role = ""
-    st.session_state.cafe_id = ""
-    st.session_state.cafe_name = ""
-
 # ============================================
 # LOGIN SCREEN
 # ============================================
@@ -1007,17 +1014,95 @@ def view_draft_screen():
             st.rerun()
         return
     
+    # Quick add items in view draft
+    if status == "Draft":
+        st.subheader("➕ Quick Add Items")
+        with st.form("quick_add_form", clear_on_submit=True):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                quick_item = st.text_input("Item Name", placeholder="e.g., Milk")
+            with col2:
+                quick_qty = st.text_input("Quantity", placeholder="10L")
+            
+            if st.form_submit_button("Add Item", use_container_width=True):
+                if quick_item and quick_item.strip():
+                    draft_manager.add_item(quick_item, quick_qty if quick_qty else "", st.session_state.user_name)
+                    st.success(f"✅ Added {quick_item}")
+                    st.rerun()
+        
+        st.markdown("---")
+    
     by_category = {}
+    uncategorized_items = []
+    
     for item in items:
         cat = item['category']
-        if cat not in by_category:
-            by_category[cat] = []
-        by_category[cat].append(item)
+        if cat == "Uncategorized":
+            uncategorized_items.append(item)
+        else:
+            if cat not in by_category:
+                by_category[cat] = []
+            by_category[cat].append(item)
     
+    # Show uncategorized items first with category assignment
+    if len(uncategorized_items) > 0:
+        with st.expander(f"⚠️ Uncategorized ({len(uncategorized_items)} items)", expanded=True):
+            st.warning("These items need to be categorized")
+            
+            for item in uncategorized_items:
+                idx = items.index(item)
+                
+                col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+                
+                with col1:
+                    st.markdown(f"**{item['name']}**")
+                    st.caption(f"Added by {item['added_by']}")
+                
+                with col2:
+                    st.write(f"{item['quantity']}")
+                
+                with col3:
+                    if status == "Draft":
+                        # Category selection
+                        categories_list = list(KEYWORDS_DATABASE.keys()) + ["➕ Create New Category"]
+                        selected_cat = st.selectbox(
+                            "Assign Category",
+                            categories_list,
+                            key=f"cat_{idx}",
+                            label_visibility="collapsed"
+                        )
+                        
+                        if selected_cat == "➕ Create New Category":
+                            new_cat = st.text_input("New Category Name", key=f"newcat_{idx}", placeholder="Enter category name")
+                            if new_cat and st.button("Create & Assign", key=f"create_{idx}"):
+                                if new_cat not in KEYWORDS_DATABASE:
+                                    KEYWORDS_DATABASE[new_cat] = [item['name'].lower()]
+                                    items[idx]['category'] = new_cat
+                                    draft_manager.draft_ref.update({'items': items})
+                                    st.success(f"✅ Created '{new_cat}' and assigned")
+                                    st.rerun()
+                        else:
+                            if st.button("Assign", key=f"assign_{idx}"):
+                                # Add to category keywords
+                                item_lower = item['name'].lower()
+                                if item_lower not in KEYWORDS_DATABASE[selected_cat]:
+                                    KEYWORDS_DATABASE[selected_cat].append(item_lower)
+                                items[idx]['category'] = selected_cat
+                                draft_manager.draft_ref.update({'items': items})
+                                st.success(f"✅ Assigned to {selected_cat}")
+                                st.rerun()
+                
+                with col4:
+                    if status == "Draft":
+                        if st.button("🗑️", key=f"del_uncat_{idx}"):
+                            draft_manager.remove_item(idx)
+                            st.rerun()
+                
+                st.markdown("---")
+    
+    # Show categorized items
     for category, cat_items in by_category.items():
-        icon = "⚠️" if category == "Uncategorized" else "✅"
-        
-        with st.expander(f"{icon} {category} ({len(cat_items)} items)", expanded=True):
+        with st.expander(f"✅ {category} ({len(cat_items)} items)", expanded=True):
             for item in cat_items:
                 idx = items.index(item)
                 
@@ -1114,11 +1199,35 @@ def review_screen():
         
         with st.expander(f"{icon} {category} ({len(cat_items)} items)", expanded=True):
             for item in cat_items:
-                col1, col2 = st.columns([3, 1])
+                idx = items.index(item)
+                
+                col1, col2, col3 = st.columns([3, 1, 1])
                 with col1:
                     st.write(f"**{item['name']}** - {item['quantity']}")
                 with col2:
                     st.caption(f"by {item['added_by']}")
+                with col3:
+                    # Allow owner to delete items during review
+                    if st.button("🗑️", key=f"review_del_{idx}"):
+                        draft_manager.remove_item(idx)
+                        st.rerun()
+    
+    st.markdown("---")
+    
+    # Quick add during review
+    st.subheader("➕ Add Items During Review")
+    with st.form("review_add_form", clear_on_submit=True):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            review_item = st.text_input("Item Name", placeholder="e.g., Sugar")
+        with col2:
+            review_qty = st.text_input("Quantity", placeholder="5kg")
+        
+        if st.form_submit_button("Add Item"):
+            if review_item and review_item.strip():
+                draft_manager.add_item(review_item, review_qty if review_qty else "", st.session_state.user_name)
+                st.success(f"✅ Added {review_item}")
+                st.rerun()
     
     st.markdown("---")
     
@@ -1127,7 +1236,7 @@ def review_screen():
     
     st.subheader("Actions")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         if st.button("✅ Approve Draft", type="primary", use_container_width=True):
@@ -1139,6 +1248,11 @@ def review_screen():
                 st.rerun()
     
     with col2:
+        if st.button("📝 Edit in Draft View", use_container_width=True):
+            st.session_state.current_page = "view_draft"
+            st.rerun()
+    
+    with col3:
         if st.button("← Cancel", use_container_width=True):
             st.session_state.current_page = "home"
             st.rerun()
@@ -1257,7 +1371,27 @@ def send_orders_screen():
             
             if not vendor:
                 st.warning(f"⚠️ No vendor assigned for {category}")
-                st.caption("Please add a vendor in Vendor Management")
+                
+                # Quick add vendor form
+                st.subheader(f"➕ Add Vendor for {category}")
+                with st.form(f"quick_vendor_{category}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        vendor_name = st.text_input("Vendor Name", key=f"vname_{category}")
+                    with col2:
+                        vendor_phone = st.text_input("Phone (10 digits)", max_chars=10, key=f"vphone_{category}")
+                    
+                    vendor_type = st.selectbox("Type", ["WhatsApp", "Call"], key=f"vtype_{category}")
+                    
+                    if st.form_submit_button("Add Vendor"):
+                        if not vendor_name or not vendor_phone:
+                            st.error("❌ Please fill all fields")
+                        elif len(vendor_phone) != 10 or not vendor_phone.isdigit():
+                            st.error("❌ Phone must be 10 digits")
+                        else:
+                            vendor_manager.add_vendor(category, vendor_name, vendor_phone, vendor_type)
+                            st.success(f"✅ Added {vendor_name} for {category}")
+                            st.rerun()
             else:
                 st.success(f"✅ Vendor: {vendor['vendor_name']} - {vendor['phone']}")
                 
