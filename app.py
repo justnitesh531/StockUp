@@ -20,6 +20,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Clear any URL query parameters to prevent logout on refresh
+try:
+    if st.query_params:
+        st.query_params.clear()
+except:
+    pass
+
 # Session state persistence - prevent logout on refresh
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
