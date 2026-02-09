@@ -1,5 +1,5 @@
 # ============================================
-# ORDERFLOW - MULTI-TENANT VERSION
+# StockUp- MULTI-TENANT VERSION
 # ============================================
 # Save as: app.py
 # Run: python -m streamlit run app.py
@@ -38,6 +38,8 @@ if 'cafe_id' not in st.session_state:
     st.session_state.cafe_id = ""
 if 'cafe_name' not in st.session_state:
     st.session_state.cafe_name = ""
+if 'user_phone' not in st.session_state:
+    st.session_state.user_phone = ""
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "home"
 if 'items_added_count' not in st.session_state:
@@ -352,16 +354,17 @@ db = init_firebase()
 # ============================================
 
 KEYWORDS_DATABASE = {
-    "Dairy & Milk Products": ["milk", "butter", "cheese", "paneer", "curd", "ghee", "cream", "dahi", "malai"],
-    "Meat, Poultry & Seafood": ["chicken", "mutton", "fish", "eggs", "prawns", "meat", "keema"],
-    "Vegetables": ["onion", "tomato", "potato", "carrot", "beans", "cabbage", "spinach", "palak", "gobi"],
-    "Fruits": ["apple", "banana", "mango", "orange", "grapes", "papaya"],
-    "Rice, Grains & Pulses": ["rice", "wheat", "atta", "dal", "pasta", "noodles", "maida", "rava"],
-    "Spices & Masala": ["salt", "pepper", "turmeric", "chilli", "masala", "jeera", "haldi"],
-    "Cooking Oil & Ghee": ["oil", "ghee", "butter", "refined", "mustard oil"],
-    "Bakery & Bread": ["bread", "bun", "cake", "biscuit", "pav", "rusk"],
-    "Beverages & Drinks": ["tea", "coffee", "juice", "water", "cold drink", "chai"],
-    "Cleaning & Kitchen Supplies": ["tissue", "napkin", "detergent", "soap", "foil", "cleaner"]
+    "Dairy & Milk Products": ["milk", "toned milk", "full cream milk", "cow milk", "buffalo milk", "packet milk", "loose milk", "butter", "white butter", "salted butter", "unsalted butter", "makhan", "cheese", "cheddar cheese", "mozzarella cheese", "processed cheese", "cheese slice", "cheese cube", "paneer", "cottage cheese", "fresh paneer", "curd", "dahi", "yogurt", "greek yogurt", "ghee", "desi ghee", "cow ghee", "buffalo ghee", "cream", "fresh cream", "cooking cream", "whipping cream", "buttermilk", "chaas", "lassi", "condensed milk", "milkmaid", "khoya", "mawa", "malai", "shrikhand"],
+    "Meat, Poultry & Seafood": ["chicken", "whole chicken", "chicken breast", "chicken leg", "chicken wings", "chicken keema", "chicken mince", "boneless chicken", "chicken with bone", "chicken curry cut", "mutton", "goat meat", "lamb", "mutton keema", "mutton chops", "mutton curry cut", "boneless mutton", "fish", "rohu", "katla", "pomfret", "salmon", "bangda", "rawas", "surmai", "fish fillet", "fish steak", "prawns", "jhinga", "shrimp", "tiger prawns", "medium prawns", "crab", "lobster", "eggs", "white eggs", "brown eggs", "duck eggs", "pork", "bacon", "ham", "sausage", "salami"],
+    "Vegetables": ["onion", "pyaz", "big onion", "small onion", "red onion", "tomato", "tamatar", "cherry tomato", "desi tomato", "potato", "aloo", "big potato", "small potato", "green chilli", "hari mirch", "chilli", "ginger", "adrak", "ginger paste", "garlic", "lehsun", "garlic paste", "coriander", "dhania", "coriander leaves", "cilantro", "curry leaves", "kadi patta", "mint", "pudina", "mint leaves", "spinach", "palak", "cabbage", "patta gobi", "red cabbage", "cauliflower", "gobi", "phool gobi", "carrot", "gajar", "beans", "french beans", "green beans", "peas", "matar", "green peas", "capsicum", "shimla mirch", "bell pepper", "red capsicum", "yellow capsicum", "brinjal", "baingan", "eggplant", "bhindi", "okra", "lady finger", "radish", "mooli", "beetroot", "chukandar", "cucumber", "kheera", "bottle gourd", "lauki", "ghiya", "ridge gourd", "turai", "bitter gourd", "karela", "pumpkin", "kaddu", "drumstick", "moringa", "mushroom", "button mushroom", "oyster mushroom", "baby corn", "broccoli", "zucchini", "lettuce", "iceberg lettuce", "celery", "leek", "spring onion"],
+    "Fruits": ["apple", "seb", "banana", "kela", "mango", "aam", "alphonso", "kesar mango", "orange", "santra", "pomegranate", "anar", "grapes", "angoor", "black grapes", "green grapes", "watermelon", "tarbuj", "papaya", "papita", "pineapple", "ananas", "guava", "amrud", "lemon", "nimbu", "lime", "sweet lime", "mosambi", "coconut", "nariyal", "fresh coconut", "dry coconut", "dates", "khajur", "kiwi", "dragon fruit", "avocado", "strawberry", "blueberry", "blackberry", "litchi", "custard apple", "sitaphal", "chikoo", "sapota", "jamun", "amla", "gooseberry"],
+    "Rice, Grains & Pulses": ["rice", "chawal", "basmati rice", "sona masoori", "kolam rice", "boiled rice", "raw rice", "wheat", "gehun", "wheat flour", "atta", "maida", "all purpose flour", "refined flour", "rava", "sooji", "semolina", "bombay rava", "besan", "gram flour", "chickpea flour", "cornflour", "corn starch", "rice flour", "ragi flour", "nachni flour", "jowar", "sorghum", "jowar flour", "bajra", "pearl millet", "bajra flour", "oats", "rolled oats", "oatmeal", "poha", "flattened rice", "thick poha", "thin poha", "sabudana", "tapioca", "vermicelli", "sevai", "semiya", "broken wheat", "dalia", "bulgur wheat", "quinoa", "couscous", "pasta", "macaroni", "penne", "fusilli", "spaghetti", "noodles", "hakka noodles", "instant noodles", "maggi", "toor dal", "arhar dal", "pigeon pea", "moong dal", "green gram", "whole moong", "moong chilka", "yellow moong dal", "urad dal", "black gram", "whole urad", "split urad", "urad chilka", "chana dal", "bengal gram", "split chickpea", "masoor dal", "red lentil", "whole masoor", "rajma", "kidney beans", "red kidney beans", "kabuli chana", "white chickpeas", "chole", "kala chana", "black chickpeas", "white beans", "navy beans", "black eyed beans", "lobia", "chawli", "green peas", "dry green peas"],
+    "Spices & Masala": ["salt", "namak", "rock salt", "sea salt", "black salt", "sendha namak", "black pepper", "kali mirch", "peppercorn", "pepper powder", "red chilli powder", "lal mirch powder", "turmeric", "haldi", "turmeric powder", "coriander powder", "dhania powder", "cumin", "jeera", "cumin seeds", "cumin powder", "mustard seeds", "rai", "sarson", "yellow mustard", "black mustard", "fenugreek", "methi", "methi seeds", "kasuri methi", "fennel", "saunf", "fennel seeds", "cardamom", "elaichi", "green cardamom", "black cardamom", "badi elaichi", "cloves", "laung", "cinnamon", "dalchini", "cinnamon stick", "bay leaf", "tej patta", "star anise", "chakra phool", "nutmeg", "jaiphal", "mace", "javitri", "asafoetida", "hing", "carom seeds", "ajwain", "nigella seeds", "kalonji", "sesame seeds", "til", "white til", "black til", "poppy seeds", "khus khus", "garam masala", "garam masala powder", "chaat masala", "pav bhaji masala", "biryani masala", "tandoori masala", "kitchen king masala", "sambar powder", "rasam powder", "curry powder", "chilli flakes", "red chilli flakes", "oregano", "mixed herbs", "italian seasoning", "thyme", "rosemary", "basil", "fresh basil", "dried basil", "parsley", "paprika", "saffron", "kesar", "vanilla essence", "vanilla extract"],
+    "Cooking Oil & Ghee": ["oil", "cooking oil", "sunflower oil", "refined oil", "mustard oil", "kachi ghani", "groundnut oil", "peanut oil", "coconut oil", "sesame oil", "til oil", "gingelly oil", "olive oil", "extra virgin olive oil", "rice bran oil", "palm oil", "vegetable oil", "ghee", "pure ghee", "cow ghee", "vanaspati", "dalda", "butter"],
+    "Bakery & Bread": ["bread", "white bread", "brown bread", "whole wheat bread", "multigrain bread", "sandwich bread", "pav bhaji pav", "pav", "bun", "burger bun", "hot dog bun", "ladi pav", "baguette", "croissant", "butter croissant", "bagel", "muffin", "chocolate muffin", "blueberry muffin", "cake", "chocolate cake", "vanilla cake", "black forest cake", "sponge cake", "pastry", "puff pastry", "cookies", "biscuit", "digestive biscuit", "marie biscuit", "rusk", "toast", "pizza base", "pizza dough", "garlic bread", "breadcrumbs", "bread crumbs"],
+    "Beverages & Drinks": ["tea", "chai", "tea powder", "tea leaves", "loose tea", "ctc tea", "green tea", "black tea", "chamomile tea", "herbal tea", "coffee", "coffee powder", "instant coffee", "filter coffee", "coffee beans", "arabica beans", "robusta beans", "ground coffee", "milk powder", "skimmed milk powder", "full cream milk powder", "drinking chocolate", "cocoa powder", "hot chocolate mix", "bournvita", "complan", "horlicks", "juice", "orange juice", "apple juice", "mixed fruit juice", "packaged juice", "cold drink", "soft drink", "coca cola", "pepsi", "sprite", "fanta", "thums up", "limca", "soda", "club soda", "tonic water", "energy drink", "red bull", "coconut water", "packaged coconut water", "buttermilk", "packaged buttermilk", "lassi", "packaged lassi", "milkshake powder"],
+    "Sugar, Sweeteners & Syrups": ["sugar", "white sugar", "refined sugar", "shakkar", "chini", "brown sugar", "jaggery", "gur", "gud", "jaggery powder", "gud powder", "honey", "natural honey", "raw honey", "maple syrup", "glucose", "glucose powder", "sugar syrup", "simple syrup", "condensed milk", "milkmaid", "chocolate syrup", "hersheys syrup", "caramel syrup", "vanilla syrup", "rose syrup", "rooh afza"],
+    "Sauces, Condiments & Pickles": ["tomato ketchup", "ketchup", "tomato sauce", "chilli sauce", "red chilli sauce", "green chilli sauce", "soy sauce", "dark soy sauce", "light soy sauce", "vinegar", "white vinegar", "apple cider vinegar", "worcestershire sauce", "hot sauce", "tabasco", "mayo", "mayonnaise", "eggless mayo", "mustard sauce", "mustard paste", "pizza sauce", "pasta sauce", "marinara sauce", "peri peri sauce", "schezwan sauce", "schezwan chutney", "green chutney", "mint chutney", "coriander chutney", "tamarind chutney", "imli chutney", "coconut chutney", "garlic chutney", "peanut chutney", "tomato chutney", "pickle", "achar", "mango pickle", "lime pickle", "mixed pickle", "garlic pickle", "chilli pickle", "jam", "mixed fruit jam", "strawberry jam", "peanut butter", "chocolate spread", "nutella"]
 }
 
 def add_new_category(category_name, keywords_list):
@@ -699,7 +702,7 @@ cafe_manager = CafeManager()
 def login_screen():
     st.markdown("""
     <div class='welcome-banner'>
-        <h1 style='color: white; margin: 0;'>🛒 OrderFlow</h1>
+        <h1 style='color: white; margin: 0;'>🛒 StockUp</h1>
         <p style='color: white; margin: 0;'>Smart Inventory Management</p>
     </div>
     """, unsafe_allow_html=True)
